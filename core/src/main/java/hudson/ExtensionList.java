@@ -24,30 +24,24 @@
 package hudson;
 
 import com.google.common.collect.Lists;
+import hudson.ExtensionPoint.LegacyInstancesAreScopedToHudson;
 import hudson.init.InitMilestone;
 import hudson.model.Hudson;
-import jenkins.ExtensionComponentSet;
-import jenkins.model.Jenkins;
 import hudson.util.AdaptedIterator;
 import hudson.util.DescriptorList;
 import hudson.util.Iterators;
-import hudson.ExtensionPoint.LegacyInstancesAreScopedToHudson;
+import jenkins.ExtensionComponentSet;
+import jenkins.model.Jenkins;
+import jenkins.util.io.OnMaster;
 
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.CheckForNull;
-import javax.annotation.Nonnull;
-import jenkins.util.io.OnMaster;
+import java.util.stream.Collectors;
 
 /**
  * Retains the known extension instances for the given type 'T'.
@@ -279,6 +273,11 @@ public class ExtensionList<T> extends AbstractList<T> implements OnMaster {
     }
 
     private synchronized boolean addSync(T t) {
+        LOGGER.fine(() -> String.format("Adding ExtensionComponents '%s' to current list %s",
+                t, extensions.stream().map(c -> c.getInstance().getClass().getName()).collect(Collectors.toList())));
+        if (LOGGER.isLoggable(Level.FINER)) {
+            LOGGER.log(Level.FINER, String.format("Adding ExtensionComponents '%s' from", t), new Throwable("Only present for stacktrace information"));
+        }
         legacyInstances.add(new ExtensionComponent<>(t));
         // if we've already filled extensions, add it
         if(extensions!=null) {
@@ -315,6 +314,15 @@ public class ExtensionList<T> extends AbstractList<T> implements OnMaster {
         synchronized (getLoadLock()) {
             if(extensions==null) {
                 List<ExtensionComponent<T>> r = load();
+                if (!legacyInstances.isEmpty()) {
+                    LOGGER.fine(() -> String.format("Adding legacy ExtensionComponents '%s' to current list %s",
+                            legacyInstances.stream().map(c -> c.getInstance().getClass().getName()).collect(Collectors.toList()), 
+                            extensions.stream().map(c -> c.getInstance().getClass().getName()).collect(Collectors.toList())));
+                    if (LOGGER.isLoggable(Level.FINER)) {
+                        LOGGER.log(Level.FINER, String.format("Adding ExtensionComponents '%s' from", legacyInstances),
+                                new Throwable("Only present for stacktrace information"));
+                    }
+                }
                 r.addAll(legacyInstances);
                 extensions = sort(r);
             }
@@ -342,6 +350,12 @@ public class ExtensionList<T> extends AbstractList<T> implements OnMaster {
             Collection<ExtensionComponent<T>> found = load(delta);
             if (!found.isEmpty()) {
                 List<ExtensionComponent<T>> l = Lists.newArrayList(extensions);
+                LOGGER.fine(() -> String.format("Adding ExtensionComponents '%s' to current list %s", 
+                        found.stream().map(c -> c.getInstance().getClass().getName()).collect(Collectors.toList()), 
+                        l.stream().map(c -> c.getInstance().getClass().getName()).collect(Collectors.toList())));
+                if (LOGGER.isLoggable(Level.FINER)) {
+                    LOGGER.log(Level.FINER, String.format("Adding ExtensionComponents '%s' from", found), new Throwable("Only present for stacktrace information"));
+                }
                 l.addAll(found);
                 extensions = sort(l);
                 fireOnChangeListeners = true;
@@ -413,6 +427,10 @@ public class ExtensionList<T> extends AbstractList<T> implements OnMaster {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> ExtensionList<T> create(Jenkins jenkins, Class<T> type) {
+        LOGGER.fine(() -> String.format("creating ExtensionList '%s'", type.getName()));
+        if (LOGGER.isLoggable(Level.FINER)) {
+            LOGGER.log(Level.FINER, String.format("Creating ExtensionList '%s' from", type.getName()), new Throwable("Only present for stacktrace information"));
+        }
         if(type.getAnnotation(LegacyInstancesAreScopedToHudson.class)!=null)
             return new ExtensionList<>(jenkins, type);
         else {
