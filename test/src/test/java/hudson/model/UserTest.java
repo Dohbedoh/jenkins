@@ -823,14 +823,14 @@ public class UserTest {
         assertThat(userDetails.getUsername(), is("bob"));
 
         final User notExistUser = User.getOrCreateByIdOrFullName(UsernameNotFoundException.class.getCanonicalName());
-        assertThat(realm.getCount(), is(6));
-        assertThrows(UsernameNotFoundException.class, () -> notExistUser.getUserDetailsForImpersonation2());
-        assertThat(realm.getCount(), is(6));
+        assertThat(realm.getCount(), is(4));
+        assertThrows(UsernameNotFoundException.class, notExistUser::getUserDetailsForImpersonation2);
+        assertThat(realm.getCount(), is(4));
 
         testUser = User.getOrCreateByIdOrFullName(UserMayOrMayNotExistException2.class.getCanonicalName());
-        assertThat(realm.getCount(), is(7));
+        assertThat(realm.getCount(), is(5));
         userDetails = testUser.getUserDetailsForImpersonation2();
-        assertThat(realm.getCount(), is(8));
+        assertThat(realm.getCount(), is(6));
         assertThat(userDetails, notNullValue());
         assertThat(userDetails.getUsername(), is(UserMayOrMayNotExistException2.class.getCanonicalName()));
     }
@@ -879,7 +879,7 @@ public class UserTest {
             }
 
             return new org.springframework.security.core.userdetails.User(username, "", true, true, true, true,
-                Arrays.asList(AUTHENTICATED_AUTHORITY2));
+                Collections.singletonList(AUTHENTICATED_AUTHORITY2));
         }
 
         @Override
