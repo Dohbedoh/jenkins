@@ -27,6 +27,7 @@ package jenkins.websocket;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Future;
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.websocket.api.Session;
@@ -51,17 +52,8 @@ public class Jetty9Provider implements Provider {
         WebSocketServletFactory.class.hashCode();
     }
 
-    private synchronized void init(HttpServletRequest req) throws Exception {
-        if (factory == null) {
-            factory = WebSocketServletFactory.Loader.load(req.getServletContext(), WebSocketPolicy.newServerPolicy());
-            factory.start();
-            factory.setCreator(Jetty9Provider::createWebSocket);
-        }
-    }
-
     @Override
     public Handler handle(HttpServletRequest req, HttpServletResponse rsp, Listener listener) throws Exception {
-        init(req);
         req.setAttribute(ATTR_LISTENER, listener);
         if (!factory.isUpgradeRequest(req, rsp)) {
             rsp.sendError(HttpServletResponse.SC_BAD_REQUEST, "only WS connections accepted here");
@@ -105,6 +97,17 @@ public class Jetty9Provider implements Provider {
                 return session;
             }
         };
+    }
+
+    @Override
+    public void init(ServletContext servletContext) {
+        factory = WebSocketServletFactory.Loader.load(servletContext, WebSocketPolicy.newServerPolicy());
+        try {
+            factory.start();
+        } catch (Exception e) {
+            throw new IllegalStateException("Unable to initialize Websocket for provided ServletContext");
+        }
+        factory.setCreator(Jetty9Provider::createWebSocket);
     }
 
     private static Object createWebSocket(ServletUpgradeRequest req, ServletUpgradeResponse resp) {

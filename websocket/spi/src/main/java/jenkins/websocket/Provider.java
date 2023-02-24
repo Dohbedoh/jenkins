@@ -27,6 +27,7 @@ package jenkins.websocket;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Future;
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -44,6 +45,14 @@ interface Provider {
      * @return a handler, unless an error code was already set
      */
     Handler handle(HttpServletRequest req, HttpServletResponse rsp, Listener listener) throws Exception;
+
+    /**
+     * Initialize the Websocket Provider.
+     *
+     * @see javax.servlet.ServletContainerInitializer
+     * @param servletContext the servlet context
+     */
+    void init(ServletContext servletContext);
 
     interface Listener {
 

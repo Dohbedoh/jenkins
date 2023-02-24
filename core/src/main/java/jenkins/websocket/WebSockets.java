@@ -29,8 +29,13 @@ import java.nio.channels.ClosedChannelException;
 import java.util.Iterator;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.servlet.ServletContainerInitializer;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import org.kohsuke.MetaInfServices;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.Beta;
 import org.kohsuke.stapler.HttpResponse;
@@ -41,7 +46,8 @@ import org.kohsuke.stapler.HttpResponses;
  * @since 2.216
  */
 @Restricted(Beta.class)
-public class WebSockets {
+@MetaInfServices(ServletContainerInitializer.class)
+public class WebSockets implements ServletContainerInitializer {
 
     private static final Logger LOGGER = Logger.getLogger(WebSockets.class.getName());
 
@@ -129,4 +135,10 @@ public class WebSockets {
 
     private WebSockets() {}
 
+    @Override
+    public void onStartup(Set<Class<?>> set, ServletContext servletContext) throws ServletException {
+        if (provider != null) {
+            provider.init(servletContext);
+        }
+    }
 }

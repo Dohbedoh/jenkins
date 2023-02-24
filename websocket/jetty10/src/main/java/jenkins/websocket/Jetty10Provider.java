@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.websocket.api.Session;
@@ -57,29 +58,19 @@ public class Jetty10Provider implements Provider {
 
     private static final String ATTR_LISTENER = Jetty10Provider.class.getName() + ".listener";
 
-    private JettyWebSocketServerContainer wsContainer;
-
     public Jetty10Provider() {
         JettyWebSocketServerContainer.class.hashCode();
     }
 
-    private synchronized void init(HttpServletRequest req) {
-        if (wsContainer == null) {
-            wsContainer = JettyWebSocketServerContainer.getContainer(req.getServletContext());
-            wsContainer.setIdleTimeout(Duration.ofSeconds(IDLE_TIMEOUT_SECONDS));
-        }
-    }
-
     @Override
     public Handler handle(HttpServletRequest req, HttpServletResponse rsp, Listener listener) throws Exception {
-        init(req);
         req.setAttribute(ATTR_LISTENER, listener);
         // TODO Jetty 10 has no obvious equivalent to WebSocketServerFactory.isUpgradeRequest; RFC6455Negotiation?
         if (!"websocket".equalsIgnoreCase(req.getHeader("Upgrade"))) {
             rsp.sendError(HttpServletResponse.SC_BAD_REQUEST, "only WS connections accepted here");
             return null;
         }
-        if (!wsContainer.upgrade(Jetty10Provider::createWebSocket, req, rsp)) {
+        if (!JettyWebSocketServerContainer.getContainer(req.getServletContext()).upgrade(Jetty10Provider::createWebSocket, req, rsp)) {
             rsp.sendError(HttpServletResponse.SC_BAD_REQUEST, "did not manage to upgrade");
             return null;
         }
@@ -123,6 +114,11 @@ public class Jetty10Provider implements Provider {
                 return session;
             }
         };
+    }
+
+    @Override
+    public void init(ServletContext servletContext) {
+        JettyWebSocketServerContainer.ensureContainer(servletContext).setIdleTimeout(Duration.ofSeconds(IDLE_TIMEOUT_SECONDS));
     }
 
     private static final class WriteCallbackImpl implements WriteCallback {
