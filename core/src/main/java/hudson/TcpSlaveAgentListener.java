@@ -44,6 +44,8 @@ import java.net.SocketAddress;
 import java.net.URL;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 import java.util.Base64;
@@ -186,7 +188,19 @@ public final class TcpSlaveAgentListener extends Thread {
                 // we take care of buffering on our own
                 s.setTcpNoDelay(true);
 
+                if (Files.isRegularFile(Paths.get("/tmp/boom1"))) {
+                    serverSocket.close();
+                }
+
+                if (Files.isRegularFile(Paths.get("/tmp/boom2"))) {
+                    throw new UnsupportedOperationException("boom2");
+                }
+
                 new ConnectionHandler(s).start();
+
+                if (Files.isRegularFile(Paths.get("/tmp/boom3"))) {
+                    throw new UnsupportedOperationException("boom3");
+                }
             } catch (Throwable e) {
                 if (!shuttingDown) {
                     LOGGER.log(Level.SEVERE, "Failed to accept TCP connections", e);
@@ -274,6 +288,9 @@ public final class TcpSlaveAgentListener extends Thread {
                     if (p != null) {
                         if (Jenkins.get().getAgentProtocols().contains(protocol)) {
                             LOGGER.log(p instanceof PingAgentProtocol ? Level.FINE : Level.INFO, () -> "Accepted " + protocol + " connection " + connectionInfo);
+                            if (Files.isRegularFile(Paths.get("/tmp/boom4"))) {
+                                throw new UnsupportedOperationException("boom4");
+                            }
                             p.handle(this.s);
                         } else {
                             error("Disabled protocol:" + s, this.s);
