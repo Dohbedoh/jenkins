@@ -496,11 +496,27 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
                                         };
                                         cgd.run(getPlugins());
 
-                                        // obtain topologically sorted list and overwrite the list
-                                        for (PluginWrapper p : cgd.getSorted()) {
-                                            if (p.isActive())
-                                                activePlugins.add(p);
+                                        File file = new File(System.getProperty(getClass().getName() + ".pluginLoadOrder", "/tmp/plugins.txt"));
+
+                                        if (file.exists()) {
+                                            List<String> pluginOrder = Files.readAllLines(file.toPath());
+                                            for (String plugin : pluginOrder) {
+                                                for (PluginWrapper p : cgd.getSorted()) {
+                                                    if (Objects.equals(p.getShortName(), plugin) && p.isActive()) {
+                                                        activePlugins.add(p);
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            for (PluginWrapper p : cgd.getSorted()) {
+                                                if (p.isActive()) {
+                                                    activePlugins.add(p);
+                                                }
+                                            }
                                         }
+
+
+                                        LOGGER.log(INFO, "plugin order: " + activePlugins.stream().map(PluginWrapper::getShortName).collect(Collectors.joining(",")));
                                     } catch (CycleDetectedException e) { // TODO this should be impossible, since we override reactOnCycle to not throw the exception
                                         stop(); // disable all plugins since classloading from them can lead to StackOverflow
                                         throw e;    // let Hudson fail
